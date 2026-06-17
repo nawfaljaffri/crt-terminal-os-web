@@ -34,6 +34,7 @@ export default function WebGLTerminalPage() {
   })
 
   const hoverRef = useRef({ x: -1, y: -1 })
+  const lastClickGridY = useRef(0)
   const activeSliderRef = useRef(-1)
   
   const inputRef = useRef<HTMLInputElement>(null)
@@ -204,7 +205,6 @@ if (!uiState.isBooted) {
   }
 
   const handlePointerInteraction = (e: any, isClick: boolean) => {
-    if (isClick && inputRef.current) inputRef.current.focus()
 
     const COLS = gridSizeRef.current.cols
     const ROWS = gridSizeRef.current.rows
@@ -223,6 +223,10 @@ if (!uiState.isBooted) {
     if (!isClick && (prevHoverX !== gridX || prevHoverY !== gridY)) {
         hoverRef.current = { x: gridX, y: gridY }
         if (setRedrawFn.current) setRedrawFn.current()
+    }
+
+    if (isClick) {
+        lastClickGridY.current = gridY;
     }
 
 if (!uiState.isBooted) {
@@ -309,7 +313,7 @@ if (!uiState.isBooted) {
         const contactX = COLS - 30;
         if (gridY === 3 && gridX >= contactX && gridX < contactX + 22) {
             playTick();
-            window.location.href = 'mailto:nawfaljaffri@gmail.com';
+            window.location.href = 'mailto:nawfaljafri@gmail.com';
             return;
         }
         if (gridY === 5 && gridX >= contactX && gridX < contactX + 28) {
@@ -366,11 +370,34 @@ if (!uiState.isBooted) {
             setUiState(s => ({ ...s, scrollOffset: Math.max(0, s.scrollOffset + (e.deltaY > 0 ? 0.3 : -0.3)) }));
           }
         }}
+        onTouchStart={(e) => {
+          // @ts-ignore - store initial touch position on the element
+          e.currentTarget._touchStartY = e.touches[0].clientY;
+        }}
+        onTouchMove={(e) => {
+          // @ts-ignore
+          const startY = e.currentTarget._touchStartY;
+          if (startY !== undefined && !uiState.settingsOpen) {
+            const currentY = e.touches[0].clientY;
+            const deltaY = startY - currentY;
+            // @ts-ignore
+            e.currentTarget._touchStartY = currentY; // reset for continuous scroll
+            if (Math.abs(deltaY) > 0) {
+              setUiState(s => ({ ...s, scrollOffset: Math.max(0, s.scrollOffset + deltaY * 0.05) }));
+            }
+          }
+        }}
         onPointerDown={(e) => handlePointerInteraction(e, true)}
         onPointerMove={(e) => handlePointerInteraction(e, false)}
         onPointerUp={() => { 
           activeSliderRef.current = -1;
-          if (inputRef.current) inputRef.current.focus();
+        }}
+        onClick={() => {
+          if (lastClickGridY.current >= 26 && inputRef.current) {
+            inputRef.current.focus();
+          } else if (inputRef.current) {
+            inputRef.current.blur();
+          }
         }}
         onPointerLeave={() => { activeSliderRef.current = -1 }}
       >
@@ -391,7 +418,6 @@ if (!uiState.isBooted) {
         onKeyDown={handleKeyDown}
         onKeyUp={syncCursor}
         onMouseUp={syncCursor}
-        autoFocus
       />
       </div>
     </div>
